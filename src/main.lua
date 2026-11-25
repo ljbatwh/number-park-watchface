@@ -72,23 +72,18 @@ local function showTime()
     timeLabel:set { text = string.format("%d%d:%d%d", hh, hl, mh, ml) }
 end
 
+-- Short feedback loop: a new character every STEP_PER_CHANGE steps, cycling through all five.
+local STEP_PER_CHANGE = 300
+
 local function showSteps(steps)
     stepLabel:set { text = tostring(steps) }
-    local idx = 1
-    for i, t in ipairs(TIERS) do if steps >= t.steps then idx = i end end
-    local cur, nxt = TIERS[idx], TIERS[idx + 1]
+    local n = steps // STEP_PER_CHANGE
+    local cur = TIERS[n % #TIERS + 1]
     ball:set { src = imgPath(cur.img) }
     nameLabel:set { text = cur.name, text_color = cur.color }
-    fill:set { bg_color = cur.color }
-    if nxt then
-        local span = nxt.steps - cur.steps
-        local done = steps - cur.steps
-        fill:set { w = math.max(1, barW * done // span) }
-        nextLabel:set { text = "再走 " .. (nxt.steps - steps) .. " 步变身" }
-    else
-        fill:set { w = barW }
-        nextLabel:set { text = "全部变身啦！" }
-    end
+    local done = steps % STEP_PER_CHANGE
+    fill:set { bg_color = cur.color, w = math.max(1, barW * done // STEP_PER_CHANGE) }
+    nextLabel:set { text = "再走 " .. (STEP_PER_CHANGE - done) .. " 步变身" }
 end
 
 local function sub(key, obj, cb)
