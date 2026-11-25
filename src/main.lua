@@ -15,6 +15,9 @@ local TIERS = {
     { steps = 10000, name = "Googolity", sym = "G",   color = "#ffd040" },
 }
 
+-- lvgl.TEXT_ALIGN.CENTER (= 2 in LVGL); lvgl.ALIGN.CENTER is a different enum.
+local TEXT_CENTER = (lvgl.TEXT_ALIGN and lvgl.TEXT_ALIGN.CENTER) or 2
+
 local fontCache = {}
 local function font(size)
     if fontCache[size] then return fontCache[size] end
@@ -30,7 +33,7 @@ local function label(parent, text, y, size, color)
     return parent:Label {
         text = text, w = W, x = 0, y = y,
         text_font = font(size), text_color = color or "#ffffff",
-        text_align = lvgl.ALIGN.CENTER,
+        text_align = TEXT_CENTER,
     }
 end
 
