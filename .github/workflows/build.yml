@@ -1,0 +1,44 @@
+name: Build watchface
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: python -m pip install pillow
+
+      - name: Download EasyFace compiler 4.23
+        shell: pwsh
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP 'EasyFace423.zip'
+          Invoke-WebRequest -Uri 'https://github.com/m0tral/EasyFace/releases/download/v4.23/EasyFace_Gen2_CompilerV423.zip' -OutFile $zip
+          $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($hash -ne '5b62773369c10c3402f369e8aa579f13393af359d0214c0d979464e5cc776cef') { throw 'EasyFace archive checksum mismatch' }
+          $dir = Join-Path $env:RUNNER_TEMP 'EasyFace423'
+          Expand-Archive -LiteralPath $zip -DestinationPath $dir
+          # The compiler tries to push to an emulator when adb sits beside it.
+          Remove-Item -LiteralPath (Join-Path $dir 'adb.exe') -ErrorAction SilentlyContinue
+          "EASYFACE_COMPILER=$(Join-Path $dir 'Compiler.exe')" >> $env:GITHUB_ENV
+
+      - name: Build
+        run: python tools/build.py --compiler "$env:EASYFACE_COMPILER" --version $env:GITHUB_RUN_NUMBER
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: number-park-watchface
+          path: dist/*.face
