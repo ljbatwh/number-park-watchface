@@ -1,4 +1,4 @@
--- Number Park watchface (test build v0.2: AI character art)
+-- Number Park watchface (v0.3: animations)
 -- Time + today's system step count + an "-ity" character that changes with steps.
 -- DEVICE is injected by tools/build.py.
 local lvgl = require("lvgl")
@@ -74,16 +74,87 @@ end
 
 -- Short feedback loop: a new character every STEP_PER_CHANGE steps, cycling through all five.
 local STEP_PER_CHANGE = 300
+local INFINITE = lvgl.ANIM_REPEAT_INFINITE or 0xFFFF
+
+-- Big "变身！" banner over the character, hidden until a transformation.
+local banner = label(root, "变身！", L.ballY + ballSize // 2 - 30, 44, "#ffffff")
+banner:add_flag(lvgl.FLAG.HIDDEN)
+
+-- Idle: the character floats up and down.
+local function startBob()
+    pcall(function()
+        ball:Anim {
+            run = true, start_value = L.ballY - 6, end_value = L.ballY + 6,
+            duration = 1200, playback_time = 1200, repeat_count = INFINITE,
+            path = "ease_in_out",
+            exec_cb = function(obj, v) obj:set { y = v } end,
+        }
+    end)
+end
+
+-- Transformation: the new character pops in from nothing while spinning, banner flashes.
+local bannerTimer
+local function playTransform(times)
+    pcall(function()
+        ball:Anim {
+            run = true, start_value = 0, end_value = 256, duration = 700,
+            repeat_count = 1, path = "overshoot",
+            exec_cb = function(obj, v) obj:set { zoom = math.max(1, v) } end,
+        }
+        ball:Anim {
+            run = true, start_value = 0, end_value = 3600, duration = 700,
+            repeat_count = 1, path = "ease_out",
+            exec_cb = function(obj, v) obj:set { angle = v % 3600 } end,
+        }
+    end)
+    banner:set { text = times > 1 and ("变身 " .. times .. " 次！") or "变身！" }
+    banner:clear_flag(lvgl.FLAG.HIDDEN)
+    pcall(function()
+        banner:Anim {
+            run = true, start_value = 0, end_value = 255, duration = 300,
+            playback_time = 300, playback_delay = 1200, repeat_count = 1,
+            path = "ease_out",
+            exec_cb = function(obj, v) obj:set { text_opa = v } end,
+        }
+    end)
+    if bannerTimer then pcall(function() bannerTimer:delete() end) end
+    bannerTimer = lvgl.Timer {
+        period = 2200, repeat_count = 1,
+        cb = function() banner:add_flag(lvgl.FLAG.HIDDEN) end,
+    }
+end
+
+local screenOn = true
+local seenN = nil      -- last transformation count the viewer actually saw
+local curN = 0
 
 local function showSteps(steps)
     stepLabel:set { text = tostring(steps) }
     local n = steps // STEP_PER_CHANGE
+    curN = n
     local cur = TIERS[n % #TIERS + 1]
     ball:set { src = imgPath(cur.img) }
     nameLabel:set { text = cur.name, text_color = cur.color }
     local done = steps % STEP_PER_CHANGE
     fill:set { bg_color = cur.color, w = math.max(1, barW * done // STEP_PER_CHANGE) }
     nextLabel:set { text = "再走 " .. (STEP_PER_CHANGE - done) .. " 步变身" }
+    if seenN == nil or n < seenN then seenN = n end   -- first load, or a new day
+    if screenOn and n > seenN then
+        playTransform(n - seenN)
+        seenN = n
+    end
+end
+
+-- When the screen comes back on, celebrate every transformation that happened meanwhile.
+function ScreenStateChangedCB(previous, current, reason)
+    screenOn = (current == "ON")
+    if screenOn and previous ~= "ON" then
+        startBob()
+        if seenN and curN > seenN then
+            playTransform(curN - seenN)
+            seenN = curN
+        end
+    end
 end
 
 local function sub(key, obj, cb)
@@ -100,3 +171,4 @@ sub("timeMinuteLow",  timeLabel, function(v) ml = v; showTime() end)
 sub("healthStepCount", stepLabel, function(v) if v <= 1000000 then showSteps(v) end end)
 
 showSteps(0)
+startBob()
