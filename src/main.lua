@@ -1,4 +1,4 @@
--- Number Park watchface (test build v0.1)
+-- Number Park watchface (test build v0.2: AI character art)
 -- Time + today's system step count + an "-ity" character that changes with steps.
 -- DEVICE is injected by tools/build.py.
 local lvgl = require("lvgl")
@@ -8,11 +8,11 @@ local W, H = DEVICE.width, DEVICE.height
 
 -- Characters unlock as today's steps grow.
 local TIERS = {
-    { steps = 0,     name = "Primity",   sym = "P",   color = "#4aa3ff" },
-    { steps = 1000,  name = "Squarity",  sym = "x^2", color = "#52d36a" },
-    { steps = 3000,  name = "Factority", sym = "n!",  color = "#ff9a3c" },
-    { steps = 6000,  name = "Doublity",  sym = "2^n", color = "#b77bff" },
-    { steps = 10000, name = "Googolity", sym = "G",   color = "#ffd040" },
+    { steps = 0,     name = "Primity",   img = "c1.png", color = "#4aa3ff" },
+    { steps = 1000,  name = "Squarity",  img = "c2.png", color = "#52d36a" },
+    { steps = 3000,  name = "Factority", img = "c3.png", color = "#ff9a3c" },
+    { steps = 6000,  name = "Doublity",  img = "c4.png", color = "#b77bff" },
+    { steps = 10000, name = "Googolity", img = "c5.png", color = "#ffd040" },
 }
 
 -- lvgl.TEXT_ALIGN.CENTER (= 2 in LVGL); lvgl.ALIGN.CENTER is a different enum.
@@ -57,11 +57,9 @@ local L = DEVICE.layout
 local timeLabel  = label(root, "--:--", L.timeY, L.timeSize)
 local capLabel   = label(root, "今天走了", L.capY, L.capSize, "#9a9a9a")
 local stepLabel  = label(root, "0", L.stepY, L.stepSize, "#ffd040")
+local function imgPath(name) return SCRIPT_PATH .. name end
 local ballSize = L.ballSize
-local ball = box(root, (W - ballSize) // 2, L.ballY, ballSize, ballSize, TIERS[1].color, ballSize // 2)
-local symLabel = ball:Label {
-    text = "P", text_font = font(L.symSize), text_color = "#000000", align = lvgl.ALIGN.CENTER,
-}
+local ball = lvgl.Image(root, { x = (W - ballSize) // 2, y = L.ballY, src = imgPath(TIERS[1].img) })
 local nameLabel  = label(root, "Primity", L.nameY, L.nameSize, TIERS[1].color)
 local barW = L.barW
 local barX = (W - barW) // 2
@@ -79,8 +77,7 @@ local function showSteps(steps)
     local idx = 1
     for i, t in ipairs(TIERS) do if steps >= t.steps then idx = i end end
     local cur, nxt = TIERS[idx], TIERS[idx + 1]
-    ball:set { bg_color = cur.color }
-    symLabel:set { text = cur.sym }
+    ball:set { src = imgPath(cur.img) }
     nameLabel:set { text = cur.name, text_color = cur.color }
     fill:set { bg_color = cur.color }
     if nxt then

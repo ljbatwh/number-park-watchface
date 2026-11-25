@@ -26,10 +26,10 @@ DEVICES = {
             "timeY": 28, "timeSize": 56,
             "capY": 118, "capSize": 22,
             "stepY": 148, "stepSize": 52,
-            "ballY": 236, "ballSize": 110, "symSize": 40,
-            "nameY": 358, "nameSize": 28,
-            "barY": 410, "barW": 180, "barH": 16,
-            "nextY": 440, "nextSize": 20,
+            "ballY": 216, "ballSize": 170,
+            "nameY": 390, "nameSize": 28,
+            "barY": 436, "barW": 180, "barH": 16,
+            "nextY": 462, "nextSize": 20,
         },
     },
 }
@@ -53,9 +53,7 @@ def preview(cfg, path):
     lay = cfg["layout"]
     im = Image.new("RGB", (w, h), "black")
     d = ImageDraw.Draw(im)
-    s = lay["ballSize"]
-    x = (w - s) // 2
-    d.ellipse([x, lay["ballY"], x + s, lay["ballY"] + s], fill="#4aa3ff")
+    im.paste(Image.open(ROOT / "src/img/c1.png").convert("RGB"), ((w - lay["ballSize"]) // 2, lay["ballY"]))
     bx = (w - lay["barW"]) // 2
     d.rounded_rectangle([bx, lay["barY"], bx + lay["barW"], lay["barY"] + lay["barH"]], radius=8, fill="#333333")
     d.rounded_rectangle([bx, lay["barY"], bx + lay["barW"] // 3, lay["barY"] + lay["barH"]], radius=8, fill="#4aa3ff")
@@ -87,6 +85,8 @@ def main():
         app.mkdir(parents=True)
         (out / "images").mkdir()
         (out / "output").mkdir()
+        for png in (ROOT / "src/img").glob("*.png"):
+            shutil.copyfile(png, app / png.name)
         (app / f"{NAME}.lua").write_text("local DEVICE = " + lua(cfg) + "\n" + source, encoding="utf-8")
         preview(cfg, out / "preview.png")
         shutil.copyfile(out / "preview.png", out / "images/preview.png")
